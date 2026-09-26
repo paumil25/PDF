@@ -1,0 +1,76 @@
+{
+  "name": "Paumil PDF Studio",
+  "short_name": "Paumil PDF",
+  "description": "Private, offline-first PDF toolkit. Merge, split, compress, protect, watermark and convert PDFs. Files never leave your device.",
+  "start_url": "./1.Paumil PDF Tool Improved - Copy.html",
+  "display": "standalone",
+  "background_color": "#07080e",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Merge PDFs",
+      "short_name": "Merge",
+      "description": "Merge multiple PDFs into one",
+      "url": "./1.Paumil PDF Tool Improved - Copy.html#merge"
+    },
+    {
+      "name": "Split PDF",
+      "short_name": "Split",
+      "description": "Split a PDF into separate pages",
+      "url": "./1.Paumil PDF Tool Improved - Copy.html#split"
+    },
+    {
+      "name": "Compress PDF",
+      "short_name": "Compress",
+      "description": "Reduce PDF file size",
+      "url": "./1.Paumil PDF Tool Improved - Copy.html#compress"
+    }
+  ]
+}
