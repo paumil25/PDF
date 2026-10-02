@@ -1322,5 +1322,89 @@ function VW(){const[i,e]=fe.useState(()=>zb()),[t,r]=fe.useState(!1),n=Zb(),a=A=
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Paumil PWA Install Button (added beside the dark/light mode toggle; everything else unchanged) -->
+    <script>
+    (function () {
+      'use strict';
+      var deferredPrompt = null;
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+
+      window.addEventListener('appinstalled', function () {
+        deferredPrompt = null;
+      });
+
+      function doInstall() {
+        if (deferredPrompt) {
+          var p = deferredPrompt;
+          deferredPrompt = null;
+          p.prompt();
+          if (p.userChoice) {
+            p.userChoice.then(function (choice) {
+              if (choice && choice.outcome === 'accepted') deferredPrompt = null;
+              else deferredPrompt = p; /* keep it for next try */
+            }).catch(function () {});
+          }
+          return;
+        }
+        /* Fallback instructions when the browser has no install prompt ready */
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        if (isStandalone) {
+          alert('Paumil PDF Studio is already installed on this device.');
+          return;
+        }
+        alert(isIOS
+          ? 'To install Paumil PDF Studio:\n1. Tap the Share icon in Safari.\n2. Scroll down and tap "Add to Home Screen".'
+          : 'To install Paumil PDF Studio:\nOpen your browser menu (the three dots \u22ee) and choose "Install app" or "Add to Home Screen".');
+      }
+
+      function makeInstallBtn() {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'relative inline-flex items-center gap-1.5 h-9 rounded-xl border px-2.5 text-[11px] font-bold transition-colors border-line-2 bg-panel-2 text-mist hover:text-fog hover:border-iris whitespace-nowrap';
+        btn.setAttribute('aria-label', 'Download as App');
+        btn.title = 'Download as App';
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download as App</span>';
+        btn.addEventListener('click', doInstall);
+        return btn;
+      }
+
+      function inject() {
+        /* Anchor to the theme toggle button, whatever its current label is */
+        var themeBtn = document.querySelector('button[aria-label^="Switch to"]');
+        if (!themeBtn || !themeBtn.parentElement) return;
+        var container = themeBtn.parentElement;
+        var existing = container.querySelector('[data-paumil-install]');
+        if (existing) {
+          /* keep it glued to the theme button after React re-renders */
+          if (existing.nextSibling !== themeBtn) {
+            container.insertBefore(existing, themeBtn);
+          }
+          return;
+        }
+        var btn = makeInstallBtn();
+        btn.setAttribute('data-paumil-install', '');
+        container.insertBefore(btn, themeBtn);
+      }
+
+      function boot() {
+        inject();
+        /* Re-attach if React re-renders the header (theme toggle, navigation, etc.) */
+        var observer = new MutationObserver(function () { inject(); });
+        observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
+    </script>
   </body>
 </html>
