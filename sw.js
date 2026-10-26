@@ -1,87 +1,76 @@
-// Paumil PDF Studio — Service Worker
-// Strategy: Cache-First for the app shell, with network fallback.
-// All PDF processing is client-side, so we cache the full HTML file.
-
-const CACHE_NAME = 'paumil-pdf-studio-v1';
-
-// The main HTML file is the entire app (it's self-contained).
+/* Paumil PDF Studio service worker. Bump CACHE_VERSION when deploying updates. */
+const CACHE_VERSION = 'paumil-pdf-studio-v1';
 const APP_SHELL = [
-  './1.Paumil PDF Tool Improved - Copy.html',
+  './',
+  './index.html',
   './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-192-maskable.png',
+  './icons/icon-512-maskable.png'
 ];
 
-// ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Pre-caching app shell');
-      return cache.addAll(APP_SHELL);
-    })
-  );
-  // Take control immediately without waiting for old SW to die
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_VERSION);
+    // Cache app shell files individually so one missing optional path doesn't abort installation.
+    await Promise.all(APP_SHELL.map(async (path) => {
+      try {
+        const response = await fetch(path, { cache: 'reload' });
+        if (response.ok) await cache.put(path, response);
+      } catch (error) {
+        console.warn('[PWA] Could not precache:', path, error);
+      }
+    }));
+    await self.skipWaiting();
+  })());
 });
 
-// ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => {
-            console.log('[SW] Deleting old cache:', name);
-            return caches.delete(name);
-          })
-      )
-    )
-  );
-  // Claim all clients so the SW is active right away
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith('paumil-pdf-studio-') && key !== CACHE_VERSION).map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-// ── Fetch ─────────────────────────────────────────────────────────────────────
-// Strategy: Cache-First → Network → (offline fallback already in cache)
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and chrome-extension / devtools requests
-  if (event.request.method !== 'GET') return;
-  if (!event.request.url.startsWith('http') && !event.request.url.startsWith('./')) return;
+  const request = event.request;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return; // Don't interfere with external CDN/font requests.
 
-  // For Google Fonts and other CDN assets: Network-first with cache fallback
-  const url = new URL(event.request.url);
-  const isCDN =
-    url.hostname.includes('fonts.googleapis.com') ||
-    url.hostname.includes('fonts.gstatic.com') ||
-    url.hostname.includes('cdn.') ;
-
-  if (isCDN) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Clone and cache good responses
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+  // HTML: try network first for fresh app code, then use the cached shell offline.
+  if (request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/')) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE_VERSION);
+          cache.put(request, response.clone()).catch(() => {});
+        }
+        return response;
+      } catch (error) {
+        const cached = await caches.match(request) || await caches.match('./index.html') || await caches.match('./');
+        if (cached) return cached;
+        return new Response('Paumil PDF Studio is not available offline yet. Open it once while connected to the internet, then try again.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        });
+      }
+    })());
     return;
   }
 
-  // For the app shell: Cache-First
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      // Not in cache — try network, then cache the response
-      return fetch(event.request).then((response) => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      });
-    })
-  );
+  // Other same-origin assets: cached first, then network and cache successful responses.
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response && response.ok) {
+      const cache = await caches.open(CACHE_VERSION);
+      cache.put(request, response.clone()).catch(() => {});
+    }
+    return response;
+  })());
 });
